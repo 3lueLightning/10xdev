@@ -1,0 +1,28 @@
+# Fallback conventions for quality-gates when run standalone (no project file).
+# project-scaffold holds the canonical schema and writes the real file at the
+# project root. quality-gates reads that; this is only the safety net.
+schema_version: 1
+
+quality:
+  file_length:     { warn: 450, fail: 600 }   # excludes tests/, notebooks/
+  function_length: { warn: 100, fail: 150 }   # excludes tests/, notebooks/
+  complexity:
+    max_mccabe: 10        # ruff C901 - primary signal
+    max_statements: 70    # ruff PLR0915 - loosened to avoid overlap with lines
+    max_branches: 12      # ruff PLR0912
+    max_arguments: 6      # ruff PLR0913
+  large_file_kb: 1000     # check-added-large-files; git-lfs files exempt
+
+naming:
+  banned_when_alone: [helper, helpers, util, utils, data, manager, handler,
+                      process, stuff, thing, foo, bar, baz]   # vague only when alone
+  extra_banned: []        # team-specific additions
+  # Banned as a word ANYWHERE in an identifier: new_data, data_new, new_car.
+  # Identifiers only -- string keys / dataframe columns (car_data["new_car"]) are
+  # exempt. Token-wise match, so renew / news / template are fine.
+  banned_tokens: [new, old, tmp, temp]
+
+layout:
+  settings_module: config/settings.py
+  relaxed_dirs: [notebooks, tests]
+  lazy_imports: []        # modules allowed to be imported inside functions

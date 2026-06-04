@@ -1,0 +1,71 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ruff.toml — generated and owned by the `quality-gates` skill.
+#
+# Provenance of every value below is marked:
+#   (qg-default)  a quality-gates default — tune it freely to taste.
+#   (conv: KEY)   mirrors .project-conventions.yaml KEY — the shared team
+#                 contract. Change it THERE and re-run quality-gates, so the
+#                 docs (AGENTS.md) and every other tool stay in agreement.
+#
+# Kept as a separate root file (not in pyproject.toml) because it's the config
+# you'll tweak most often. Casing rules (snake_case for functions/variables,
+# PascalCase for classes, UPPER_CASE for constants) are enforced by the "N"
+# rule set below; the custom name checks in scripts/ handle vague/banned words.
+# ─────────────────────────────────────────────────────────────────────────────
+
+target-version = "py312"          # (conv: project.python_version) keep in sync with the project's Python
+line-length = 100                 # (qg-default)
+src = ["src", "tests"]            # (qg-default)
+# notebooks/ is a relaxed experimentation sandbox: excluded from ruff entirely
+# (lint + format). Secret scanning still covers notebooks via gitleaks.
+extend-exclude = ["notebooks"]    # (qg-default)
+
+[lint]
+# (qg-default) the selected rule sets. Each line says what it buys you.
+select = [
+    "E", "W",      # pycodestyle
+    "F",           # pyflakes (unused imports F401, redefinition F811, ...)
+    "I",           # isort (import ordering)
+    "N",           # pep8-naming — snake_case functions/vars, PascalCase classes
+    "UP",          # pyupgrade
+    "B",           # bugbear
+    "ANN",         # flake8-annotations (signature typing)
+    "S",           # flake8-bandit (fast security subset)
+    "T20",         # flake8-print (ban print/pprint)
+    "PTH",         # flake8-use-pathlib (push pathlib over os.path)
+    "G",           # flake8-logging-format
+    "LOG",         # flake8-logging
+    "C90",         # mccabe complexity
+    "PLC0415",     # import-outside-top-level
+    "PLW0603",     # global-statement (ban `global`)
+    "PLW0602",     # global-variable-not-assigned
+    "PLR0912",     # too-many-branches
+    "PLR0913",     # too-many-arguments
+    "PLR0915",     # too-many-statements
+    "RUF",         # ruff-specific
+]
+ignore = [
+    "ANN401",      # (qg-default) allow typing.Any where deliberately used
+]
+
+[lint.per-file-ignores]
+# (qg-default) relaxed sandboxes — see .project-conventions.yaml layout.relaxed_dirs
+"tests/**"     = ["S101", "ANN", "PLR2004"]   # asserts + untyped tests are fine
+"notebooks/**" = ["ALL"]                       # notebooks are a relaxed sandbox
+# scripts/ holds CLI tooling (the quality-gates checks live here). CLI utilities
+# legitimately print to stdout/stderr, shell out to git, and lazy-import optional
+# deps, so those rules don't apply here -- but typing and pathlib still do.
+"scripts/**"   = ["T20", "S603", "S607", "PLC0415", "C901"]
+
+[lint.mccabe]
+max-complexity = 10               # (conv: quality.complexity.max_mccabe)
+
+[lint.pylint]
+max-branches = 12                 # (conv: quality.complexity.max_branches)
+max-args = 6                      # (conv: quality.complexity.max_arguments)
+max-statements = 70               # (conv: quality.complexity.max_statements)
+
+[lint.flake8-tidy-imports]
+# (conv: layout.lazy_imports) modules that MUST be imported lazily (inside
+# functions); PLC0415 then won't complain about them. Empty by default.
+banned-module-level-imports = []

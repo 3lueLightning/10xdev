@@ -1,0 +1,7 @@
+{
+  "name": "dev",
+  "push_access_level": 0,
+  "merge_access_level": 30,
+  "allow_force_push": false,
+  "_note": "Also enable Settings > Merge requests > 'Pipelines must succeed' so ci-check gates merges."
+}

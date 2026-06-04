@@ -1,0 +1,50 @@
+# CANONICAL schema for .project-conventions.yaml, written to the project root by
+# project-scaffold from interview answers. quality-gates and ai-project-guidance
+# READ this file (each keeps its own fallback copy for standalone runs).
+# Committed to the repo (shared team config) — unlike .env. `null` = deferred;
+# re-run a skill after filling one in to apply it.
+schema_version: 1
+
+project:
+  name: null
+  package: null          # name with hyphens -> underscores
+  python_version: "3.12"
+  api: rest              # rest | rest+ws | none
+
+git:
+  status: null           # no git yet | git, I have admin | git, no admin | not sure
+  forge: null            # github | gitlab | bitbucket | gitea | decide later
+
+genai:
+  llm_providers: []      # e.g. [openai, anthropic]
+  prompt_management: yaml only
+  deployment_target: not yet
+
+quality:
+  coverage_target: measure only   # a number enables a CI coverage gate
+  signature_typing: enforced      # signatures on changed code from day one
+  deeper_typing: advisory
+  file_length:     { warn: 450, fail: 600 }
+  function_length: { warn: 100, fail: 150 }
+  complexity:
+    max_mccabe: 10
+    max_statements: 70
+    max_branches: 12
+    max_arguments: 6
+  large_file_kb: 1000
+
+naming:
+  banned_when_alone: [helper, helpers, util, utils, data, manager, handler,
+                      process, stuff, thing, foo, bar, baz]   # vague only when alone
+  extra_banned: []
+  # Banned as a word ANYWHERE in an identifier: new_data, data_new, new_car.
+  # Identifiers only -- string keys / dataframe columns (car_data["new_car"]) are
+  # exempt. Token-wise match, so renew / news / template are fine.
+  banned_tokens: [new, old, tmp, temp]
+
+layout:
+  settings_module: config/settings.py
+  relaxed_dirs: [notebooks, tests]
+  lazy_imports: []
+
+deferred: []             # ids of questions answered with defaults, to revisit

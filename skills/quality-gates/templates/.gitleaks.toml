@@ -1,0 +1,12 @@
+# gitleaks config. Extends the default ruleset; add project allowlists below.
+title = "quality-gates gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''\.env\.example$''',
+    '''(.*?)\.lock$''',
+]

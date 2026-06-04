@@ -1,0 +1,12 @@
+{
+  "name": "10xdev",
+  "owner": { "name": "Diogo Norinho" },
+  "metadata": { "description": "10xdev — Python GenAI project scaffolding + quality gates for Claude Code." },
+  "plugins": [
+    {
+      "name": "10xdev",
+      "source": "./",
+      "description": "Scaffold Python GenAI projects and enforce a friendly, self-documenting quality bar. Four skills: project-scaffold, quality-gates, ai-project-guidance, git-setup."
+    }
+  ]
+}

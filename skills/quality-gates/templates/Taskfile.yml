@@ -1,0 +1,115 @@
+# Owned by the `quality-gates` skill (re-run it to regenerate). Values that mirror
+# .project-conventions.yaml are noted there; the rest are skill defaults.
+# Cross-platform task runner (https://taskfile.dev). One binary, no Docker.
+# The same `task ci-check` is run by the pre-push hook AND by CI, so "passes
+# locally" and "passes in CI" are the same thing by construction.
+version: '3'
+
+vars:
+  PKG_DIR: src
+
+tasks:
+  default:
+    cmds: [task --list]
+
+  # ---- onboarding: a freshly-cloned repo becomes productive in one command ----
+  setup:
+    desc: "Install deps + git hooks. Run once after cloning."
+    cmds:
+      - uv sync
+      - uv run pre-commit install
+      - uv run pre-commit install --hook-type pre-push
+      - echo "Setup complete. Try 'task ci-check'."
+
+  # ---- the unified gate: pre-push and CI both call this ----
+  ci-check:
+    desc: "Full quality gate. Run before pushing; CI runs the same thing."
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: security
+      - task: audit
+      - task: deps-check
+      - task: test
+
+  # ---- fast checks for the pre-commit hook (sub-5s target) ----
+  precommit-fast:
+    desc: "Fast, commit-time checks. Forgiving by design."
+    cmds:
+      - uv run ruff check --select=E9,F63,F7,F82 .
+      - uv run python scripts/check_changed_signatures.py
+      - uv run python scripts/check_banned_names.py
+      - uv run python scripts/check_module_state.py
+      - uv run python scripts/check_load_dotenv.py
+      - uv run python scripts/check_sizes.py --changed-only
+
+  # ---- individual heavy checks ----
+  lint:
+    cmds:
+      - uv run ruff check .
+      - uv run ruff format --check .
+
+  format:
+    desc: "Auto-format and auto-fix."
+    cmds:
+      - uv run ruff format .
+      - uv run ruff check --fix .
+
+  typecheck:
+    desc: "Signatures enforced on changed lines; deeper checks advisory."
+    cmds:
+      - uv run python scripts/check_changed_signatures.py --strict
+      - uv run mypy || true
+      - uv run pyright || true
+
+  security:
+    cmds:
+      - uv run bandit -r {{.PKG_DIR}} -q
+
+  audit:
+    desc: "Dependency CVE scan (pure-Python, all platforms)."
+    cmds:
+      - uv run pip-audit
+
+  audit-package:
+    desc: "Inspect a package before adding it. Usage: task audit-package -- requests"
+    cmds:
+      - uv run guarddog pypi scan {{.CLI_ARGS}}
+
+  audit-new-deps:
+    desc: "Run guarddog on packages newly added to the lockfile."
+    cmds:
+      - uv run python scripts/check_new_deps.py | xargs -r -n1 uv run guarddog pypi scan
+
+  deps-check:
+    desc: "Imports must be declared; lockfile must be current."
+    cmds:
+      - uv lock --check
+      - uv run deptry {{.PKG_DIR}}
+
+  test:
+    cmds:
+      - uv run pytest --cov={{.PKG_DIR}} --cov-report=term --cov-report=json:.coverage.json
+
+  sizes:
+    desc: "Report files/functions over the conventions thresholds."
+    cmds:
+      - uv run python scripts/check_sizes.py
+
+  # ---- profiling: diagnostic, never a gate; outputs are LLM-readable ----
+  profile-quick:
+    desc: "30s CPU profile. Usage: task profile-quick -- python script.py"
+    cmds:
+      - mkdir -p .profiles
+      - py-spy record -o .profiles/latest.svg --format flamegraph -d 30 -- {{.CLI_ARGS}}
+      - py-spy record -o .profiles/latest.json --format speedscope -d 30 -- {{.CLI_ARGS}}
+      - uv run python scripts/profile_summary.py .profiles/latest.json > .profiles/latest.md
+      - echo "Wrote .profiles/latest.md (read this) and .profiles/latest.svg (visual)."
+
+  profile-mem:
+    desc: "Memory profile via scalene. Usage: task profile-mem -- script.py"
+    cmds:
+      - mkdir -p .profiles
+      - uv run scalene --json --outfile .profiles/mem.json --cli {{.CLI_ARGS}}
+      - uv run python scripts/profile_summary.py --mem .profiles/mem.json > .profiles/mem.md
+      - echo "Wrote .profiles/mem.md"

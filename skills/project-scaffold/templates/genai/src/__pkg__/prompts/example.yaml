@@ -1,0 +1,8 @@
+name: example
+description: A starter prompt showing the expected YAML shape.
+system: |
+  You are a careful assistant. Answer concisely and cite sources when relevant.
+user_template: |
+  Summarize the following text in {n_sentences} sentences:
+
+  {text}

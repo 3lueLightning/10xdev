@@ -1,0 +1,52 @@
+name: ci
+on:
+  push: { branches: [main, dev] }
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install test deps
+        run: pip install pytest pyyaml tomlkit
+      - name: Unit + render tests
+        run: python -m pytest tests/ -q
+
+  end-to-end:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - name: Scaffold a project, apply gates, run the full gate
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          pip install pyyaml tomlkit
+          cat > /tmp/a.yaml <<'EOF'
+          project_name: ci-probe
+          python_version: "3.12"
+          api: rest
+          git_status: "git, I have admin"
+          forge: github
+          llm_providers: anthropic
+          prompt_management: yaml only
+          EOF
+          python skills/project-scaffold/scripts/render.py --answers /tmp/a.yaml --dest /tmp
+          cd /tmp/ci-probe
+          git init -q && git config user.email c@i && git config user.name ci
+          python "$GITHUB_WORKSPACE/skills/quality-gates/scripts/apply.py" --dest .
+          uv sync
+          uv pip install ruff deptry bandit pytest pytest-cov
+          git add -A
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run deptry src
+          for s in check_changed_signatures check_banned_names check_module_state check_load_dotenv check_sizes; do
+            uv run python scripts/$s.py
+          done
+          uv run bandit -q -r src
+          uv run pytest -q
+          uv run python -c "import ci_probe; from ci_probe.prompts.loader import load_prompt; assert load_prompt('example').name == 'example'"

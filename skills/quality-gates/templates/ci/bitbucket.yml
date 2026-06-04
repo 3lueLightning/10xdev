@@ -1,0 +1,16 @@
+# bitbucket-pipelines.yml
+image: ghcr.io/astral-sh/uv:debian
+clone:
+  depth: full   # diff-based hooks need full history
+pipelines:
+  branches:
+    main: &ci
+      - step:
+          name: ci-check
+          script:
+            - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+            - uv sync
+            - task ci-check
+    dev: *ci
+  pull-requests:
+    '**': *ci

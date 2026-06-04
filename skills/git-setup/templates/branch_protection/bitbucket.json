@@ -1,0 +1,7 @@
+{
+  "kind": "require_approvals_to_merge",
+  "branch_match_kind": "glob",
+  "pattern": "main",
+  "value": 1,
+  "_rules": ["prevent force-push", "prevent deletion", "require ci-check build to pass"]
+}

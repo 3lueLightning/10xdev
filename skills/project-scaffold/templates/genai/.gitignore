@@ -1,0 +1,26 @@
+# Secrets & local config
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.json
+
+# Profiling output (machine-specific, large)
+.profiles/
+
+# Logs
+logs/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

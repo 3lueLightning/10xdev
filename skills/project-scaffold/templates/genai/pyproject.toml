@@ -1,0 +1,25 @@
+[project]
+name = "{{project_name}}"
+version = "0.1.0"
+description = "A Python GenAI project."
+requires-python = ">={{python_version}}"
+dependencies = [
+    "pydantic>=2",
+    "pydantic-settings>=2",
+    "pyyaml>=6",
+    "loguru>=0.7",
+    # LLM SDKs and FastAPI are added by the scaffold based on interview answers.
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{pkg}}"]
+
+[tool.uv]
+package = true
+
+# [tool.*] sections (mypy, pytest, coverage, bandit, deptry, pyright) are merged
+# in by the quality-gates skill. Ruff config lives in ruff.toml.

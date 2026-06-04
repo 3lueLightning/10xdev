@@ -1,0 +1,47 @@
+# Owned by the `quality-gates` skill (re-run it to regenerate). Values that mirror
+# .project-conventions.yaml are noted there; the rest are skill defaults.
+# Two stages, deliberately asymmetric:
+#   pre-commit  -> fast & forgiving, so juniors commit often without fear
+#   pre-push    -> the full gate (= CI), so nothing unverified reaches the remote
+# Local hooks call `task`, so hooks, manual runs, and CI all use ONE toolchain.
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  # Standard hygiene fixers (fast). check-added-large-files auto-skips LFS files.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+
+  # Secret scanning runs at commit time on ALL files, notebooks included
+  # (output cells can leak keys). gitleaks manages its own binary -> no manual
+  # install for Windows developers.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # Project-specific fast checks, via the single toolchain.
+  - repo: local
+    hooks:
+      - id: precommit-fast
+        name: fast project checks
+        entry: task precommit-fast
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: ci-check
+        name: full CI gate (pre-push)
+        entry: task ci-check
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

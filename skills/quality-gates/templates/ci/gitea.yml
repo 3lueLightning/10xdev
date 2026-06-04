@@ -1,0 +1,18 @@
+# .gitea/workflows/ci-check.yml  (Gitea Actions is GitHub-Actions compatible)
+name: ci-check
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+      - uses: arduino/setup-task@v2
+      - run: task setup
+      - run: task ci-check

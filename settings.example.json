@@ -1,0 +1,26 @@
+{
+  "//": "Copy the relevant parts into ~/.claude/settings.json (user-wide) or",
+  "//2": ".claude/settings.json (per-project) to stop the per-file approval prompts.",
+  "//3": "Rules evaluate deny > ask > allow. Review anytime with /permissions.",
+  "permissions": {
+    "allow": [
+      "Read(//Users/**/.claude/plugins/**)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(uv:*)",
+      "Bash(uvx:*)",
+      "Bash(task:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)"
+    ],
+    "defaultMode": "default"
+  }
+}

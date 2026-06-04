@@ -1,0 +1,25 @@
+# Canonical LF line endings across Windows / WSL / macOS / Linux.
+# .gitattributes wins over each developer's core.autocrlf, so the repo stays
+# consistent regardless of local git config.
+* text=auto eol=lf
+
+# Windows-only scripts genuinely need CRLF.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Treat these as binary (no EOL munging, no diffs).
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.ipynb binary
+*.parquet binary
+*.pkl  binary
+*.bin  binary
+
+# Large artifacts via Git LFS (uncomment per project as needed).
+# *.ckpt filter=lfs diff=lfs merge=lfs -text
+# *.safetensors filter=lfs diff=lfs merge=lfs -text

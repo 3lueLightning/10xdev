@@ -1,0 +1,106 @@
+# Canonical interview for project-scaffold (GenAI v1).
+#
+# HOW TO RUN IT (see SKILL.md for the full workflow):
+#   - First show the `intro` so the user knows what's happening and why.
+#   - Ask Phase-1 `essentials` ONE AT A TIME. Prefix each question with its
+#     one-line `why` so the user understands the trade-off, not just the choice.
+#   - EVERY question also implicitly accepts a free-text reply ("let me explain"
+#     / a comment / an option not listed). Always honour that; never force a
+#     listed choice. If the reply needs interpretation, reflect it back briefly.
+#   - After the essentials, DO NOT silently stop. Show the `deferrable` list and
+#     ask whether they want to refine any now or accept sensible defaults.
+#   - Answers are collected into an answers file and handed to scripts/render.py,
+#     which generates everything in one pass (no per-file prompts).
+schema_version: 1
+
+intro: |
+  I'll set up a new Python GenAI project for you. I'll ask a few quick questions
+  first - each with a one-line reason so you know why it matters - then generate
+  a clean, ready-to-work structure (package, settings, logging, tests, tooling,
+  CI) in a single step. Most questions have a sensible default, and you can
+  always type a free-text answer or "skip" instead of picking an option.
+
+# Phase 1: essentials that determine the shape of the scaffold.
+essentials:
+  - id: project_name
+    ask: "What's the project called? (lowercase, hyphens - it becomes the folder and, de-hyphenated, the import name)"
+    why: "Becomes the directory name and the importable package name."
+    validate: "^[a-z][a-z0-9-]{1,40}$"
+
+  - id: python_version
+    ask: "Which Python version? (press enter for the default)"
+    why: "Pinned in pyproject and .python-version; uv builds the venv from it. The default is the latest stable minus one - the version most libraries already support."
+    # No hard-coded default: compute it at ask-time with
+    #   python scripts/render.py --print-python-default
+    # (latest stable CPython minor minus one). Offer that as the default and let
+    # the user override with any version they type.
+    default: dynamic
+
+  - id: api
+    ask: "Will this expose an HTTP API or websockets?"
+    why: "If yes, adds a thin FastAPI layer with pydantic request/response models; if no, none of that is created."
+    choices: ["rest", "rest+ws", "none"]
+    default: "rest"
+
+  - id: git_status
+    ask: "What's the git situation?"
+    why: "Decides whether the git-setup skill runs to configure branch protection - and it never blocks local setup if you have no remote or no admin."
+    choices: ["no git yet", "git, I have admin", "git, no admin", "not sure"]
+
+  - id: forge
+    ask: "Which forge will host CI?"
+    why: "Selects which CI workflow file is generated; all of them just run `task ci-check`."
+    choices: ["github", "gitlab", "bitbucket", "gitea", "decide later"]
+    skip_if: "git_status in ['no git yet', 'not sure']"
+
+# Transition shown after the essentials (do not skip this):
+deferrable_intro: |
+  That's everything I need to build a working project. I can either generate it
+  now with sensible defaults, or you can refine any of these optional choices
+  first - say which ones you'd like to set, or "just build it".
+
+# Phase 2: optional. Present as a list; any left unset uses its default and is
+# recorded under `deferred` so re-running the skill can fill it in later.
+deferrable:
+  - id: llm_providers
+    ask: "Which LLM providers? (e.g. openai, anthropic, google - comma-separated)"
+    why: "Adds the matching SDK (openai / anthropic / google-genai) and ignores it in dependency-hygiene until your llm/ wrappers import it."
+    default: "decide later"
+
+  - id: prompt_management
+    ask: "How do you want to manage prompts?"
+    why: "'yaml' keeps versioned prompt files INSIDE the package (ships in the wheel, container-safe). Langfuse/Langsmith manage prompts externally - so NO prompts folder or loader is created, just the SDK."
+    choices: ["yaml only", "langfuse", "langsmith", "decide later"]
+    default: "yaml only"
+
+  - id: deployment_target
+    ask: "Where will this deploy, if you know yet?"
+    why: "Cloud targets default logging to JSON-on-stdout; it's also the seam a future cloud-infra skill plugs into."
+    choices: ["gcp", "aws", "azure", "on-prem", "not yet"]
+    default: "not yet"
+
+  - id: coverage_target
+    ask: "Test coverage target?"
+    why: "A number makes CI fail below it; 'measure only' reports coverage without gating."
+    default: "measure only"
+
+  - id: extra_banned_names
+    ask: "Any identifier names to ban beyond the standard list? (comma-separated, or 'none')"
+    why: "Extends naming.extra_banned - e.g. internal jargon you don't want leaking into code."
+    default: "none"
+
+  - id: lazy_imports
+    ask: "Any heavy/optional modules that must be imported lazily (inside functions)? (comma-separated, or 'none')"
+    why: "Allow-lists them so the 'imports go at the top' rule doesn't flag those specific deferred imports."
+    default: "none"
+
+  # These two refine AGENTS.md / CLAUDE.md so the guidance fits the project.
+  - id: domain_summary
+    ask: "One sentence on what this project does? (optional)"
+    why: "Goes into AGENTS.md so an AI assistant has the domain context up front."
+    default: ""
+
+  - id: team_norms
+    ask: "Any team conventions an assistant should follow? (optional, free text)"
+    why: "Captured in AGENTS.md - e.g. 'prefer explicit over clever', review norms, libraries to avoid."
+    default: ""

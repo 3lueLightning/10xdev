@@ -1,0 +1,50 @@
+# Owned by the `quality-gates` skill. These [tool.*] sections are MERGED into
+# the project's pyproject.toml by scripts/merge_pyproject.py, which preserves
+# existing content and comments -- so values the project (or project-scaffold)
+# already set are kept. Notably, project-scaffold pre-seeds
+# [tool.deptry.per_rule_ignores] DEP002 with declared-but-not-yet-imported SDKs;
+# that survives this merge. Ruff config lives in ruff.toml, not here.
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+# Advisory by default: signatures are enforced on changed lines by a hook.
+# Flip these to true (and remove `|| true` in the Taskfile) to harden later.
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+pretty = true
+
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "basic"
+reportMissingImports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+# Coverage is measured, not gated, by default. Set fail_under to enforce later.
+# fail_under = 60
+
+[tool.bandit]
+exclude_dirs = ["tests", "notebooks", ".venv"]
+
+[tool.deptry]
+# Notebooks are a relaxed experimentation sandbox; do not enforce dep hygiene there.
+extend_exclude = ["notebooks"]
+[tool.deptry.per_rule_ignores]
+# DEP002 = "declared but not imported". uvicorn is a server entrypoint run via the
+# CLI, never imported, so it lives here permanently. project-scaffold appends any
+# chosen LLM SDK (anthropic/openai/google-genai) until the llm/ wrappers import it.
+DEP002 = ["uvicorn"]

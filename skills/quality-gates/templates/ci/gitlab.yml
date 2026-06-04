@@ -1,0 +1,15 @@
+# .gitlab-ci.yml
+stages: [check]
+ci-check:
+  stage: check
+  image: ghcr.io/astral-sh/uv:debian
+  variables:
+    GIT_DEPTH: "0"   # diff-based hooks need full history
+  before_script:
+    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+    - uv sync
+  script:
+    - task ci-check
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "dev"'
