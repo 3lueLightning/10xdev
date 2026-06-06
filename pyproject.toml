@@ -1,0 +1,31 @@
+[project]
+name = "10xdev"
+version = "0.1.0"
+description = "Python GenAI project scaffolding + quality gates for Claude Code"
+readme = "README.md"
+requires-python = ">=3.13"
+# Runtime deps used by the skill scripts (render.py, merge_pyproject.py, …)
+dependencies = [
+    "pyyaml>=6.0",
+    "tomlkit>=0.13",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.10",
+    "pytest>=8.0",
+    "ruff>=0.9",
+    "types-pyyaml>=6.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.mypy]
+python_version = "3.13"
+files = ["tests"]
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+pretty = true

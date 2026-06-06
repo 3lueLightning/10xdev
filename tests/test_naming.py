@@ -11,7 +11,6 @@ def _flag(src: str):
     tree = ast.parse(textwrap.dedent(src))
     alone = {"data", "helper", "process", "manager"}
     anywhere = {"new", "old", "tmp", "temp"}
-    flagged = set()
     # reimplement the walk against an in-memory tree (check_file reads from disk)
     found = []
 

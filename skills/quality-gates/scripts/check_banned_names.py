@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 
 from _common import (
@@ -43,45 +45,72 @@ def tokens(name: str) -> list[str]:
     return [t.lower() for t in out if t]
 
 
+def _iter_names(tree: ast.AST) -> Iterator[tuple[str, int, str]]:
+    """Yield (identifier, lineno, kind) for every user-defined name in the tree."""
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            yield node.name, node.lineno, "function"
+            all_args = [
+                *node.args.posonlyargs,
+                *node.args.args,
+                *node.args.kwonlyargs,
+                node.args.vararg,
+                node.args.kwarg,
+            ]
+            for arg in all_args:
+                if arg is not None:
+                    yield arg.arg, arg.lineno, "argument"
+        elif isinstance(node, ast.ClassDef):
+            yield node.name, node.lineno, "class"
+        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            # covers assignment, augmented-assign, for/with-as, comprehension and
+            # walrus targets -- everywhere a new binding name is introduced.
+            yield node.id, node.lineno, "name"
+
+
+def _check_name(
+    name: str,
+    lineno: int,
+    kind: str,
+    *,
+    path: Path,
+    alone: set[str],
+    anywhere: set[str],
+    treat_whole_file: bool,
+    changed: set[int],
+) -> str | None:
+    if name.startswith("__") and name.endswith("__"):
+        return None  # dunders are protocol, not chosen names
+    if not (treat_whole_file or lineno in changed):
+        return None
+    parts = tokens(name)
+    hit = anywhere.intersection(parts)
+    if hit:
+        word = sorted(hit)[0]
+        return (
+            f"{path}:{lineno} {kind} '{name}' contains '{word}'; name it for "
+            f"what it holds, not when/which version (string keys are exempt)"
+        )
+    if len(parts) == 1 and parts[0] in alone:
+        return f"{path}:{lineno} {kind} '{name}' is too vague on its own"
+    return None
+
+
 def check_file(path: Path, alone: set[str], anywhere: set[str]) -> list[str]:
     try:
         tree = ast.parse(path.read_text())
     except SyntaxError:
         return []
     changed = changed_line_numbers(path)
-    treat_whole_file = not changed
-    out: list[str] = []
-
-    def flag(name: str, lineno: int, kind: str) -> None:
-        if name.startswith("__") and name.endswith("__"):
-            return  # dunders are protocol, not chosen names
-        if not (treat_whole_file or lineno in changed):
-            return
-        parts = tokens(name)
-        hit = anywhere.intersection(parts)
-        if hit:
-            word = sorted(hit)[0]
-            out.append(
-                f"{path}:{lineno} {kind} '{name}' contains '{word}'; name it for "
-                f"what it holds, not when/which version (string keys are exempt)"
-            )
-        elif len(parts) == 1 and parts[0] in alone:
-            out.append(f"{path}:{lineno} {kind} '{name}' is too vague on its own")
-
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            flag(node.name, node.lineno, "function")
-            args = node.args
-            for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs, args.vararg, args.kwarg]:
-                if arg is not None:
-                    flag(arg.arg, arg.lineno, "argument")
-        elif isinstance(node, ast.ClassDef):
-            flag(node.name, node.lineno, "class")
-        elif isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
-            # covers assignment, augmented-assign, for/with-as, comprehension and
-            # walrus targets -- everywhere a new binding name is introduced.
-            flag(node.id, node.lineno, "name")
-    return out
+    kwargs = {
+        "path": path, "alone": alone, "anywhere": anywhere,
+        "treat_whole_file": not changed, "changed": changed,
+    }
+    return [
+        msg
+        for name, lineno, kind in _iter_names(tree)
+        if (msg := _check_name(name, lineno, kind, **kwargs))  # type: ignore[arg-type]
+    ]
 
 
 def main() -> int:

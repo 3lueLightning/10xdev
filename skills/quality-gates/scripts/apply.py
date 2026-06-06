@@ -113,7 +113,7 @@ def main() -> int:
     print("quality-gates applied:")
     print(f"  config   : {', '.join(STATIC)}, .python-version")
     print(f"  scripts  : {len(list(SCRIPTS.glob('*.py'))) - 1} checks -> scripts/")
-    print(f"  pyproject: [tool.*] sections merged")
+    print("  pyproject: [tool.*] sections merged")
     print(f"  ci       : {CI_DEST.get(forge, '(skipped)')}")
     print("\n  next: run `task setup` then `task ci-check`")
     return 0

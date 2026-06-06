@@ -23,7 +23,6 @@ import argparse
 import re
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import tomlkit
@@ -108,7 +107,7 @@ def wire_pyproject(path: Path, *, api: str, providers: list[str],
                    prompt_mgr: str) -> None:
     doc = tomlkit.parse(path.read_text(encoding="utf-8"))
     deps = doc["project"]["dependencies"]
-    declared = {re.split(r"[><=!~ \[]", str(d), 1)[0].lower() for d in deps}
+    declared = {re.split(r"[><=!~ \[]", str(d), maxsplit=1)[0].lower() for d in deps}
 
     def add(spec: str) -> None:
         if spec.split("[", 1)[0].lower() not in declared:
@@ -227,7 +226,8 @@ def main() -> int:
 
     print(BANNER)
     print(f"  package : {pkg}   python : {py}   api : {api}")
-    print(f"  prompts : {'external (' + prompt_mgr + ')' if 'prompts' in drop else 'in-package YAML'}")
+    prompts_label = f"external ({prompt_mgr})" if "prompts" in drop else "in-package YAML"
+    print(f"  prompts : {prompts_label}")
     if providers:
         print(f"  llm     : {', '.join(providers)}")
     if deferred:
