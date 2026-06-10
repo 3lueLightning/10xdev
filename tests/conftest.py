@@ -1,4 +1,5 @@
 """Make the skills' scripts importable from tests."""
+
 import sys
 from pathlib import Path
 

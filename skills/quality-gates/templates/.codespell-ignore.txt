@@ -1,0 +1,4 @@
+# Project dictionary for codespell (seeded by quality-gates, owned by YOU).
+# One word per line, lowercase. Add legitimate terms codespell flags as typos
+# (domain jargon, product names, abbreviations). Comment lines are ignored in
+# practice -- they never match a flagged word.

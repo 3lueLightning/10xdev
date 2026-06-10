@@ -1,6 +1,8 @@
 """The naming rule: banned tokens anywhere in identifiers; strings exempt."""
+
 import ast
 import textwrap
+from pathlib import Path
 
 import check_banned_names as cbn
 
@@ -11,7 +13,6 @@ def _flag(src: str):
     tree = ast.parse(textwrap.dedent(src))
     alone = {"data", "helper", "process", "manager"}
     anywhere = {"new", "old", "tmp", "temp"}
-    flagged = set()
     # reimplement the walk against an in-memory tree (check_file reads from disk)
     found = []
 
@@ -74,3 +75,47 @@ def test_tokenizer():
     assert cbn.tokens("NewOrder") == ["new", "order"]
     assert cbn.tokens("renew") == ["renew"]
     assert cbn.tokens("HTTPSConnection") == ["https", "connection"]
+
+
+def _underscore_rules():
+    return cbn.NameRules(
+        path=Path("m.py"), alone=set(), anywhere=set(), treat_whole_file=True, changed=set()
+    )
+
+
+def test_module_level_underscore_prefix_flagged():
+    rules = _underscore_rules()
+    assert rules.underscore_violation("_configure", 1, "function")
+    assert rules.underscore_violation("_Settings", 1, "class")
+    assert rules.underscore_violation("_cache", 1, "name")
+
+
+def test_underscore_conventions_with_meaning_allowed():
+    rules = _underscore_rules()
+    assert rules.underscore_violation("__all__", 1, "name") is None  # dunder
+    assert rules.underscore_violation("_", 1, "name") is None  # throwaway
+    assert rules.underscore_violation("class_", 1, "name") is None  # keyword dodge
+    assert rules.underscore_violation("configure", 1, "function") is None
+
+
+def test_class_internals_are_not_module_level():
+    tree = ast.parse(
+        textwrap.dedent("""
+        class Client:
+            def _internal(self):
+                self._attr = 1
+        _top_level = 2
+    """)
+    )
+    names = {name for name, _, _ in cbn.iter_module_level_names(tree)}
+    assert names == {"Client", "_top_level"}  # _internal/_attr are class-internal
+
+
+def test_underscore_module_filename_flagged(tmp_path, monkeypatch):
+    monkeypatch.setattr(cbn, "changed_line_numbers", lambda path: set())
+    flagged = tmp_path / "_common.py"
+    flagged.write_text("x = 1\n")
+    assert any("filename" in m for m in cbn.check_file(flagged, set(), set()))
+    dunder = tmp_path / "__init__.py"
+    dunder.write_text("")
+    assert cbn.check_file(dunder, set(), set()) == []

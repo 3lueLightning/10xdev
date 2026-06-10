@@ -1,0 +1,41 @@
+target-version = "py313"
+line-length = 100
+src = ["tests"]
+extend-exclude = ["skills/*/templates"]
+
+[lint]
+select = [
+    "E", "W",
+    "F",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "ANN",
+    "S",
+    "T20",
+    "PTH",
+    "G",
+    "LOG",
+    "C90",
+    "PLC0415",
+    "PLW0603",
+    "PLW0602",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
+    "RUF",
+]
+ignore = ["ANN401"]
+
+[lint.per-file-ignores]
+"tests/**"              = ["S101", "S603", "ANN", "PLR2004"]
+"skills/*/scripts/**"   = ["T20", "S603", "S607", "PLC0415", "ANN"]
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pylint]
+max-branches = 12
+max-args = 6
+max-statements = 70

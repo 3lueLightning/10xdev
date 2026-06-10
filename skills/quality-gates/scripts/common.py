@@ -49,7 +49,7 @@ DEFAULT_CONVENTIONS: dict = {
     },
     "layout": {
         "settings_module": "config/settings.py",
-        "relaxed_dirs": ["notebooks", "tests"],
+        "relaxed_dirs": ["notebooks", "tests", "scripts"],
     },
 }
 
@@ -71,14 +71,14 @@ def load_conventions(root: str | None = None) -> dict:
             parsed = yaml.safe_load(path.read_text()) or {}
         except Exception:
             parsed = {}
-    return _deep_merge(DEFAULT_CONVENTIONS, parsed)
+    return deep_merge(DEFAULT_CONVENTIONS, parsed)
 
 
-def _deep_merge(base: dict, override: dict) -> dict:
+def deep_merge(base: dict, override: dict) -> dict:
     out = dict(base)
     for key, value in override.items():
         if isinstance(value, dict) and isinstance(out.get(key), dict):
-            out[key] = _deep_merge(out[key], value)
+            out[key] = deep_merge(out[key], value)
         else:
             out[key] = value
     return out
@@ -118,7 +118,7 @@ def repo_root() -> Path:
         return Path.cwd()
 
 
-def _git(*args: str) -> str:
+def run_git(*args: str) -> str:
     out = subprocess.run(["git", *args], capture_output=True, text=True)
     return out.stdout
 
@@ -126,8 +126,8 @@ def _git(*args: str) -> str:
 def base_ref() -> str:
     """Best-effort merge base to diff against (origin/dev, dev, or HEAD)."""
     for ref in ("origin/dev", "dev", "origin/main", "main"):
-        if _git("rev-parse", "--verify", "--quiet", ref).strip():
-            mb = _git("merge-base", "HEAD", ref).strip()
+        if run_git("rev-parse", "--verify", "--quiet", ref).strip():
+            mb = run_git("merge-base", "HEAD", ref).strip()
             if mb:
                 return mb
     return "HEAD"
@@ -136,13 +136,13 @@ def base_ref() -> str:
 def changed_python_files(staged_only: bool = False) -> list[Path]:
     """Python files added/modified vs the base ref (or staged index)."""
     if staged_only:
-        names = _git("diff", "--cached", "--name-only", "--diff-filter=d")
+        names = run_git("diff", "--cached", "--name-only", "--diff-filter=d")
     else:
         # Union of: committed-since-base, staged, unstaged, and untracked-new.
-        names = _git("diff", "--name-only", "--diff-filter=d", base_ref(), "HEAD")
-        names += "\n" + _git("diff", "--cached", "--name-only", "--diff-filter=d")
-        names += "\n" + _git("diff", "--name-only", "--diff-filter=d")
-        names += "\n" + _git("ls-files", "--others", "--exclude-standard")
+        names = run_git("diff", "--name-only", "--diff-filter=d", base_ref(), "HEAD")
+        names += "\n" + run_git("diff", "--cached", "--name-only", "--diff-filter=d")
+        names += "\n" + run_git("diff", "--name-only", "--diff-filter=d")
+        names += "\n" + run_git("ls-files", "--others", "--exclude-standard")
     root = repo_root()
     seen: set[str] = set()
     files: list[Path] = []
@@ -164,9 +164,9 @@ def changed_line_numbers(path: Path) -> set[int]:
     diff information is available (e.g. a brand-new untracked file).
     """
     rel = str(path.relative_to(repo_root()))
-    diff = _git("diff", "--unified=0", base_ref(), "HEAD", "--", rel)
-    diff += _git("diff", "--cached", "--unified=0", "--", rel)
-    diff += _git("diff", "--unified=0", "--", rel)
+    diff = run_git("diff", "--unified=0", base_ref(), "HEAD", "--", rel)
+    diff += run_git("diff", "--cached", "--unified=0", "--", rel)
+    diff += run_git("diff", "--unified=0", "--", rel)
     if not diff.strip():
         return set()  # caller decides; usually "whole file is new"
     lines: set[int] = set()

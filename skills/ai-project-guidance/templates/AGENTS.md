@@ -45,18 +45,24 @@ src/{{pkg}}/
   config/      # ONE Settings object (pydantic-settings). Nothing else config-y.
   constants/   # True constants only — domain facts that never change.
   prompts/     # Prompt loaders + versioned prompt YAML, packaged (importlib.resources).
+               # The ONLY prompts location — never a root-level prompts/.
   llm/         # LLM client wrappers.
   api/         # FastAPI app + routers + request/response models (if applicable).
   core/        # Business logic.
   logging.py   # The project logger. Import `logger` from here, nowhere else.
-prompts/        # Prompt YAML files at the repo root.
-tests/          # Mirrors src/ layout.
+tests/          # Mirrors src/ layout (relaxed rules).
 notebooks/      # Experimentation sandbox (relaxed rules — see bottom).
+scripts/        # YOUR throwaway scripts (relaxed rules) — never the repo root.
+ci_pipeline/    # The quality gate's own check scripts (owned by quality-gates).
+docs/           # MkDocs documentation source (`task docs-serve` to preview).
 ```
 
 Import by **package name**, never by folder: `from {{pkg}}.core import extract`,
 never `from src...` and never `sys.path.insert(...)`. The project is installed
 editable by `uv sync`, so the package resolves everywhere, including notebooks.
+
+**No script files at the repository root** — the gate rejects them. A quick
+experiment goes in `scripts/` or `notebooks/`; shipping code goes in `src/{{pkg}}/`.
 
 ---
 
@@ -119,11 +125,20 @@ Hard rules the linters enforce:
   This applies to **identifiers only** — string literals, dict keys and
   dataframe columns are exempt, so `car_data["new_car"]` and `df["car_old"]` are
   perfectly fine. Matching is token-wise, so `renew`, `news`, `template` are fine.
-- **No leading-underscore module-level names.** Underscore means "private to an
-  object" — keep `self._method()` for genuinely internal methods (the way it was
-  always meant), but a module-level `_thing` is almost always misplaced config.
+- **No single-underscore prefix at module level** (enforced by the naming gate).
+  This is a backend service — nothing imports your modules from outside, so the
+  "internal use" hint of `_configure` vs `configure` distinguishes nothing.
+  Name module-level functions, classes, constants, and module *files* plainly
+  (`common.py`, not `_common.py`). The underscore forms that DO carry meaning
+  (see https://dbader.org/blog/meaning-of-underscores-in-python) stay allowed:
+  `self._attr` / `def _method` inside a class (genuinely internal to the
+  object), `__dunder__` protocol names, a trailing underscore to dodge a
+  keyword (`class_`), and the bare `_` throwaway variable.
 - **Casing (ruff `N`):** `snake_case` for functions and variables, `PascalCase`
   for classes, `UPPER_CASE` for module-level constants.
+- **Spelling is checked** (codespell, in the gate). If it flags a legitimate
+  domain term or product name, add the word to `.codespell-ignore.txt` (one
+  lowercase word per line) — don't disable the check.
 
 ---
 
@@ -224,6 +239,25 @@ still matter: (1) **no secrets** — gitleaks scans notebooks including output
 cells, so never paste a key, and be careful what you print; (2) it is **not**
 `src/` — once code works, graduate it into `src/` where the standards apply. A
 `!uv pip install` in a cell for a quick experiment is fine.
+
+---
+
+## Never circumvent a failing gate
+
+When a commit hook, `git push`, or CI fails, the failure output names a real
+violation — **fix the violation, never the gate**. Concretely, all of these are
+prohibited responses to a red gate:
+
+- Editing `.pre-commit-config.yaml`, `Taskfile.yml`, `ruff.toml`, or
+  `.project-conventions.yaml` to disable or weaken the check that fired.
+- `git commit --no-verify` / `git push --no-verify`.
+- Adding `# noqa` / `# type: ignore` / bumping a threshold just to get green.
+
+Read the error, find the underlying cause, and fix that — then the push passes
+because the code is right. CI runs the identical `task ci-check`, so a locally
+silenced gate only moves the failure somewhere more public. If you believe a
+gate itself is misconfigured, say so explicitly to the user and let them decide;
+that's a team-contract change, not a quick fix.
 
 ---
 

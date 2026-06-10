@@ -2,8 +2,24 @@
 #
 # HOW TO RUN IT (see SKILL.md for the full workflow):
 #   - First show the `intro` so the user knows what's happening and why.
-#   - Ask Phase-1 `essentials` ONE AT A TIME. Prefix each question with its
-#     one-line `why` so the user understands the trade-off, not just the choice.
+#   - Ask Phase-1 `essentials` ONE AT A TIME, in this exact presentation order:
+#
+#       **QUESTION <n>/<total>**
+#
+#       <the question>
+#
+#       - <default choice> — <description> (default — press Enter)
+#       - <other choice>   — <description>
+#
+#       **Why it matters**: <the one-line `why`>
+#
+#     The question comes FIRST, the rationale LAST — the user should read what
+#     is being asked before why. When using a question tool (AskUserQuestion),
+#     put the default as the FIRST option and mark it "(default)" so pressing
+#     Enter selects it.
+#   - EVERY question must be answerable by just pressing Enter: each one has a
+#     `default` (for `project_name`, which has no default, say "(required)").
+#     An empty reply means "take the default".
 #   - EVERY question also implicitly accepts a free-text reply ("let me explain"
 #     / a comment / an option not listed). Always honour that; never force a
 #     listed choice. If the reply needs interpretation, reflect it back briefly.
@@ -44,13 +60,15 @@ essentials:
 
   - id: git_status
     ask: "What's the git situation?"
-    why: "Decides whether the git-setup skill runs to configure branch protection - and it never blocks local setup if you have no remote or no admin."
+    why: "Decides whether the git-setup skill runs to create the remote repo and configure branch protection - and it never blocks local setup if you have no remote or no admin."
     choices: ["no git yet", "git, I have admin", "git, no admin", "not sure"]
+    default: "not sure"
 
   - id: forge
     ask: "Which forge will host CI?"
     why: "Selects which CI workflow file is generated; all of them just run `task ci-check`."
     choices: ["github", "gitlab", "bitbucket", "gitea", "decide later"]
+    default: "decide later"
     skip_if: "git_status in ['no git yet', 'not sure']"
 
 # Transition shown after the essentials (do not skip this):

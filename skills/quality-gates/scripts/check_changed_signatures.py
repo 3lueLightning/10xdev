@@ -17,12 +17,12 @@ import ast
 import sys
 from pathlib import Path
 
-from _common import changed_line_numbers, changed_python_files, fail
+from common import changed_line_numbers, changed_python_files, fail
 
 EXEMPT_ARGS = {"self", "cls"}
 
 
-def _missing_annotations(func: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+def missing_annotations(func: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
     problems: list[str] = []
     a = func.args
     positional = [*a.posonlyargs, *a.args, *a.kwonlyargs]
@@ -49,7 +49,7 @@ def check_file(path: Path) -> list[str]:
             continue
         if not (treat_whole_file or node.lineno in changed):
             continue
-        for problem in _missing_annotations(node):
+        for problem in missing_annotations(node):
             rel = path
             out.append(f"{rel}:{node.lineno} {node.name}(): {problem}")
     return out

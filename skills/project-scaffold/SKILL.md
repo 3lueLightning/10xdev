@@ -17,11 +17,31 @@ philosophy: **ask, understand, then build the minimum that's correct** — not a
 Use `interview.yaml`.
 
 - **Show `intro` first** so the user knows what's about to happen.
-- Ask the **Phase-1 `essentials` one at a time**, each prefixed with its
-  one-line `why`. Don't present them as a wall/menu — ask conversationally.
+- Ask the **Phase-1 `essentials` one at a time**, in this exact presentation
+  order — question first, options next, rationale last:
+
+  ```
+  **QUESTION 3/5**
+
+  Will this expose an HTTP API or websockets?
+
+  - rest — REST API via FastAPI (default — press Enter)
+  - rest+ws — REST + WebSockets
+  - none — no HTTP layer
+
+  **Why it matters**: If yes, adds a thin FastAPI layer with pydantic
+  request/response models; if no, none of that is created.
+  ```
+
+  When using a question tool (AskUserQuestion), the default goes FIRST and is
+  labelled "(default)" so pressing Enter selects it.
+- **Every question must be answerable by pressing Enter** (empty reply = take
+  the default). The only exception is `project_name`, which is required — say so.
 - For `python_version`, compute the default at ask-time:
-  `python scripts/render.py --print-python-default` (latest stable CPython minor
-  minus one). Offer it as the default; accept any version the user types.
+  `uv run scripts/render.py --print-python-default` (latest stable CPython minor
+  minus one — e.g. 3.13 while 3.14 is current). If that command fails, derive
+  the same "penultimate minor" by other means (`uv python list`); **never**
+  guess an older version. Accept any version the user types.
 - Honour `skip_if` (e.g. skip the forge question when there's no git).
 - **Every question also accepts free text** — "let me explain", a comment, or an
   option that isn't listed. Never force a listed choice; reflect back anything
@@ -35,10 +55,12 @@ For non-interactive / CI runs, that same answers file can be supplied directly.
 
 ### 2. Generate the structure — one approval, no per-file prompts
 
-Run the renderer **once**:
+Run the renderer **once**, always through `uv run` (the script carries PEP 723
+inline metadata, so uv provides its dependencies — never call bare `python` and
+never `pip install` anything for it):
 
 ```
-python scripts/render.py --answers <answers>.yaml --dest <parent-dir>
+uv run scripts/render.py --answers <answers>.yaml --dest <parent-dir>
 ```
 
 This single command creates the whole tree, substitutes `{{pkg}}` /
@@ -49,8 +71,11 @@ a completion banner. It is one action to approve.
 **Do not** generate files one at a time with individual writes, and **do not ask
 the user whether to create boilerplate** (`.gitignore`, `.env.example`,
 `__init__.py`, settings, etc.) — there is nothing to decide; `render.py` writes
-them. If the tool environment prompts per write, tell the user up front they can
-approve the run once ("allow for this session") rather than approving each file.
+them. Likewise **do not read, `ls`, or `grep` this skill's `templates/` files
+yourself** — the renderer handles all of them; inspecting them one by one only
+triggers a wall of permission prompts. If the tool environment prompts per
+write, tell the user up front they can approve the run once ("allow for this
+session") rather than approving each file.
 
 `render.py` applies the conditional structure automatically:
 
@@ -86,8 +111,11 @@ those are in `.project-conventions.yaml` under `guidance:` — fold them in.
 ### 5. Call git-setup (only if admin)
 
 If `git_status` is "git, I have admin" (or the user confirms they can configure
-the repo), invoke the `git-setup` skill for the branch model and protection.
-Otherwise skip it entirely — never block on remote configuration.
+the repo), invoke the `git-setup` skill. It creates the remote repository when
+none exists (via the forge CLI), pushes `main` + `dev`, applies branch
+protection, and leaves the working copy **on `dev`** so nothing is ever pushed
+to `main` directly. Otherwise skip it entirely — never block on remote
+configuration.
 
 ### 6. Finish
 
@@ -95,7 +123,8 @@ Run `task setup` then `task ci-check`, and report. The render banner already
 signals structural completion; summarise what was created and what was
 `deferred`, and tell the user that re-running this skill (or editing
 `.project-conventions.yaml` and re-running `quality-gates`) fills in deferred
-choices later.
+choices later. If git-setup ran, remind them they are on `dev` and `main` only
+moves by PR.
 
 ## Principles
 

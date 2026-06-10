@@ -6,18 +6,23 @@ conventions explain themselves.
 
 It bundles four composable skills:
 
-- **project-scaffold** — interviews you, then generates a correct `src`-layout
-  project in a single pass (package, `Settings`, logging, prompt loader, tests,
-  optional FastAPI). One approval, no per-file prompts.
+- **project-scaffold** — interviews you (question first, Enter for the default,
+  rationale last), then generates a correct `src`-layout project in a single
+  pass (package, `Settings`, logging, prompt loader, tests, MkDocs docs, a
+  `scripts/` sandbox, optional FastAPI). One approval, no per-file prompts.
 - **quality-gates** — installs the whole apparatus behind one `task ci-check`:
-  ruff (lint + format), type checking, bandit / pip-audit / supply-chain scan,
-  deptry, size & complexity limits, a token-aware naming check, secret scanning,
-  and a two-stage hook system (fast commits, strict pushes) plus multi-forge CI.
+  ruff (lint + format + import ordering), type checking, bandit / pip-audit /
+  on-demand supply-chain scan, deptry, codespell with a project dictionary,
+  size & complexity limits, a token-aware naming check (including a ban on
+  reflexive `_`-prefixes at module level), a no-scripts-at-repo-root check,
+  secret scanning, and a two-stage hook system (fast commits, strict pushes —
+  the gate's checks live in `ci_pipeline/`) plus multi-forge CI.
 - **ai-project-guidance** — generates `AGENTS.md` + `CLAUDE.md` grounded in
   *Clean Code*, including instructions for the assistant to coach the developer
-  when a gate fires rather than silently working around it.
-- **git-setup** — main/dev branch model and branch protection (when you have
-  admin), always with a manual fallback doc.
+  when a gate fires — and never to weaken a gate to get past a failure.
+- **git-setup** — creates the remote repo (when you have admin), main/dev branch
+  model and branch protection, leaves you on `dev` so nothing lands on `main`
+  directly; manual fallback doc in `.repo-config/REPO-SETUP.md`.
 
 ## Install
 
@@ -40,8 +45,7 @@ project). Review anytime with `/permissions`.
 ## Develop / test
 
 ```
-pip install pytest pyyaml tomlkit
-python -m pytest tests/ -q
+uv run pytest tests/ -q
 ```
 
 `tests/test_naming.py` covers the naming rule (banned tokens anywhere in

@@ -11,7 +11,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from _common import changed_python_files, fail, load_conventions
+from common import changed_python_files, fail, load_conventions
 
 
 def check_file(path: Path, settings_rel: str) -> list[str]:

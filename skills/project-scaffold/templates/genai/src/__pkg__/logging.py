@@ -14,7 +14,7 @@ from loguru import logger
 
 from {{pkg}}.config import get_settings
 
-_CONSOLE_FORMAT = (
+CONSOLE_FORMAT = (
     "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
     "<level>{level: <8}</level> | "
     "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
@@ -22,7 +22,7 @@ _CONSOLE_FORMAT = (
 )
 
 
-def _configure() -> None:
+def configure_logging() -> None:
     settings = get_settings()
     logger.remove()
     if settings.log_format == "json":
@@ -31,11 +31,11 @@ def _configure() -> None:
         logger.add(
             sys.stderr,
             level=settings.log_level,
-            format=_CONSOLE_FORMAT,
+            format=CONSOLE_FORMAT,
             colorize=True,
         )
 
 
-_configure()
+configure_logging()
 
 __all__ = ["logger"]

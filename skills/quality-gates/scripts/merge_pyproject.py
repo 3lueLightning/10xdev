@@ -19,12 +19,12 @@ from typing import Any
 import tomlkit
 
 
-def _merge(dst: Any, src: Any) -> None:
+def merge_missing(dst: Any, src: Any) -> None:
     for key, value in src.items():
         if key not in dst:
             dst[key] = value
         elif hasattr(value, "items") and hasattr(dst[key], "items"):
-            _merge(dst[key], value)
+            merge_missing(dst[key], value)
         # else: key exists as a scalar -> respect the project's choice
 
 
@@ -38,7 +38,7 @@ def main() -> int:
     target_path, sections_path = sys.argv[1], sys.argv[2]
     target = tomlkit.parse(Path(target_path).read_text())
     sections = tomlkit.parse(Path(sections_path).read_text())
-    _merge(target, sections)
+    merge_missing(target, sections)
     with Path(target_path).open("w") as fh:
         fh.write(tomlkit.dumps(target))
     print(f"Merged tool sections into {target_path}")

@@ -8,7 +8,7 @@ schema_version: 1
 project:
   name: null
   package: null          # name with hyphens -> underscores
-  python_version: "3.12"
+  python_version: "3.13" # default = latest stable minus one (computed at ask-time)
   api: rest              # rest | rest+ws | none
 
 git:
@@ -44,7 +44,7 @@ naming:
 
 layout:
   settings_module: config/settings.py
-  relaxed_dirs: [notebooks, tests]
+  relaxed_dirs: [notebooks, tests, scripts]
   lazy_imports: []
 
 deferred: []             # ids of questions answered with defaults, to revisit
