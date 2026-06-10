@@ -19,7 +19,7 @@ from collections import Counter
 from pathlib import Path
 
 
-def _summary_speedscope(profile: dict) -> str:
+def summarize_speedscope(profile: dict) -> str:
     profiles = profile.get("profiles", [])
     frames = profile.get("shared", {}).get("frames", [])
     counts: Counter[int] = Counter()
@@ -55,7 +55,7 @@ def _summary_speedscope(profile: dict) -> str:
     return "\n".join(lines)
 
 
-def _summary_scalene(profile: dict) -> str:
+def summarize_scalene(profile: dict) -> str:
     files = profile.get("files", {})
     rows = []
     for fname, fdata in files.items():
@@ -83,7 +83,7 @@ def main() -> int:
         print("usage: profile_summary.py [--mem] <profile.json>", file=sys.stderr)
         return 2
     profile = json.loads(Path(args[0]).read_text())
-    print(_summary_scalene(profile) if is_mem else _summary_speedscope(profile))
+    print(summarize_scalene(profile) if is_mem else summarize_speedscope(profile))
     return 0
 
 

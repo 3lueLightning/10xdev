@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pyyaml>=6", "tomlkit>=0.13"]
+# ///
 """Apply the quality-gates toolchain to a project in ONE run.
 
 Why this exists: copying ~15 config files and the check scripts one by one makes
@@ -7,8 +11,10 @@ script means a single approved command instead of a wall of prompts. The script
 locates its own templates relative to __file__, so it works wherever the skill
 (or plugin) is installed.
 
-Usage:
-    apply.py --dest <project-dir> [--forge github|gitlab|bitbucket|gitea]
+Run it with `uv run` -- the PEP 723 header above makes uv supply pyyaml and
+tomlkit, so nothing needs to be pip-installed first:
+
+    uv run apply.py --dest <project-dir> [--forge github|gitlab|bitbucket|gitea]
 
 It does NOT install dependencies or create a venv -- that's `uv sync` / `task
 setup`, a separate explicit step the developer runs.
@@ -27,18 +33,26 @@ HERE = Path(__file__).resolve().parent.parent
 TEMPLATES = HERE / "templates"
 SCRIPTS = HERE / "scripts"
 
-# forge -> destination path for the CI workflow
+# forge -> destination path for the CI workflow (the file is named after the
+# `ci-check` status check that branch protection requires)
 CI_DEST = {
-    "github": ".github/workflows/ci.yml",
+    "github": ".github/workflows/ci-check.yml",
     "gitlab": ".gitlab-ci.yml",
     "bitbucket": "bitbucket-pipelines.yml",
-    "gitea": ".gitea/workflows/ci.yml",
+    "gitea": ".gitea/workflows/ci-check.yml",
 }
 
 STATIC = [
-    "ruff.toml", ".gitleaks.toml", ".gitattributes", ".editorconfig",
-    "Taskfile.yml", ".pre-commit-config.yaml",
+    "ruff.toml",
+    ".gitleaks.toml",
+    ".gitattributes",
+    ".editorconfig",
+    "Taskfile.yml",
+    ".pre-commit-config.yaml",
 ]
+
+# user-owned once created: seeded if absent, never overwritten on re-runs
+SEEDED = [".codespell-ignore.txt"]
 
 
 def load_conventions(dest: Path) -> dict:
@@ -65,8 +79,9 @@ def align_ruff(ruff: Path, conv: dict) -> None:
     lazy = conv.get("layout", {}).get("lazy_imports") or []
     if lazy:
         listed = ", ".join(f'"{m}"' for m in lazy)
-        text = re.sub(r"banned-module-level-imports = \[\]",
-                      f"banned-module-level-imports = [{listed}]", text)
+        text = re.sub(
+            r"banned-module-level-imports = \[\]", f"banned-module-level-imports = [{listed}]", text
+        )
     ruff.write_text(text, encoding="utf-8")
 
 
@@ -84,23 +99,32 @@ def main() -> int:
     # 1. static config (don't clobber a project-owned .python-version)
     for fname in STATIC:
         shutil.copy2(TEMPLATES / fname, dest / fname)
+    for fname in SEEDED:
+        if not (dest / fname).exists():
+            shutil.copy2(TEMPLATES / fname, dest / fname)
     if not (dest / ".python-version").exists():
         py = conv.get("project", {}).get("python_version", "3.13")
         (dest / ".python-version").write_text(f"{py}\n", encoding="utf-8")
     align_ruff(dest / "ruff.toml", conv)
 
-    # 2. check scripts
-    (dest / "scripts").mkdir(exist_ok=True)
+    # 2. check scripts -> ci_pipeline/ (scripts/ is reserved for the user's own
+    #    throwaway scripts; the gate tooling must not squat on that name)
+    (dest / "ci_pipeline").mkdir(exist_ok=True)
     for script in SCRIPTS.glob("*.py"):
         if script.name != "apply.py":
-            shutil.copy2(script, dest / "scripts" / script.name)
+            shutil.copy2(script, dest / "ci_pipeline" / script.name)
+    shutil.copy2(TEMPLATES / "ci_pipeline" / "README.md", dest / "ci_pipeline" / "README.md")
 
     # 3. merge [tool.*] sections into pyproject (subprocess = no extra host prompt)
     pyproject = dest / "pyproject.toml"
     if pyproject.exists():
         subprocess.run(
-            [sys.executable, str(SCRIPTS / "merge_pyproject.py"), str(pyproject),
-             str(TEMPLATES / "pyproject.tool-sections.toml")],
+            [
+                sys.executable,
+                str(SCRIPTS / "merge_pyproject.py"),
+                str(pyproject),
+                str(TEMPLATES / "pyproject.tool-sections.toml"),
+            ],
             check=True,
         )
 
@@ -111,8 +135,8 @@ def main() -> int:
         shutil.copy2(TEMPLATES / "ci" / f"{forge}.yml", ci_target)
 
     print("quality-gates applied:")
-    print(f"  config   : {', '.join(STATIC)}, .python-version")
-    print(f"  scripts  : {len(list(SCRIPTS.glob('*.py'))) - 1} checks -> scripts/")
+    print(f"  config   : {', '.join(STATIC + SEEDED)}, .python-version")
+    print(f"  checks   : {len(list(SCRIPTS.glob('*.py'))) - 1} scripts -> ci_pipeline/")
     print("  pyproject: [tool.*] sections merged")
     print(f"  ci       : {CI_DEST.get(forge, '(skipped)')}")
     print("\n  next: run `task setup` then `task ci-check`")

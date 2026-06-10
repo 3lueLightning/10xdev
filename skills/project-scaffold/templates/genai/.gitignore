@@ -17,6 +17,9 @@ __pycache__/
 # Profiling output (machine-specific, large)
 .profiles/
 
+# Built documentation (regenerate with `task docs-build`)
+site/
+
 # Logs
 logs/
 

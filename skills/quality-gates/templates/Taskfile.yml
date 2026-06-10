@@ -3,6 +3,9 @@
 # Cross-platform task runner (https://taskfile.dev). One binary, no Docker.
 # The same `task ci-check` is run by the pre-push hook AND by CI, so "passes
 # locally" and "passes in CI" are the same thing by construction.
+#
+# Layout note: ci_pipeline/ holds the gate's own check scripts (owned by
+# quality-gates); scripts/ is YOUR relaxed sandbox for throwaway scripts.
 version: '3'
 
 vars:
@@ -37,28 +40,36 @@ tasks:
     desc: "Fast, commit-time checks. Forgiving by design."
     cmds:
       - uv run ruff check --select=E9,F63,F7,F82 .
-      - uv run python scripts/check_changed_signatures.py
-      - uv run python scripts/check_banned_names.py
-      - uv run python scripts/check_module_state.py
-      - uv run python scripts/check_load_dotenv.py
-      - uv run python scripts/check_sizes.py --changed-only
+      - uv run python ci_pipeline/check_changed_signatures.py
+      - uv run python ci_pipeline/check_banned_names.py
+      - uv run python ci_pipeline/check_module_state.py
+      - uv run python ci_pipeline/check_load_dotenv.py
+      - uv run python ci_pipeline/check_root_scripts.py
+      - uv run python ci_pipeline/check_sizes.py --changed-only
 
   # ---- individual heavy checks ----
   lint:
     cmds:
       - uv run ruff check .
       - uv run ruff format --check .
+      - uv run codespell
+      - uv run python ci_pipeline/check_root_scripts.py
 
   format:
-    desc: "Auto-format and auto-fix."
+    desc: "Auto-format and auto-fix (includes import ordering via ruff's isort rules)."
     cmds:
       - uv run ruff format .
       - uv run ruff check --fix .
 
+  spell:
+    desc: "Spell-check code and docs. Add legitimate terms to .codespell-ignore.txt."
+    cmds:
+      - uv run codespell
+
   typecheck:
     desc: "Signatures enforced on changed lines; deeper checks advisory."
     cmds:
-      - uv run python scripts/check_changed_signatures.py --strict
+      - uv run python ci_pipeline/check_changed_signatures.py --strict
       - uv run mypy || true
       - uv run pyright || true
 
@@ -74,12 +85,12 @@ tasks:
   audit-package:
     desc: "Inspect a package before adding it. Usage: task audit-package -- requests"
     cmds:
-      - uv run guarddog pypi scan {{.CLI_ARGS}}
+      - uvx guarddog pypi scan {{.CLI_ARGS}}
 
   audit-new-deps:
     desc: "Run guarddog on packages newly added to the lockfile."
     cmds:
-      - uv run python scripts/check_new_deps.py | xargs -r -n1 uv run guarddog pypi scan
+      - uv run python ci_pipeline/check_new_deps.py | xargs -r -n1 uvx guarddog pypi scan
 
   deps-check:
     desc: "Imports must be declared; lockfile must be current."
@@ -94,22 +105,33 @@ tasks:
   sizes:
     desc: "Report files/functions over the conventions thresholds."
     cmds:
-      - uv run python scripts/check_sizes.py
+      - uv run python ci_pipeline/check_sizes.py
+
+  # ---- documentation (mkdocs-material + mkdocstrings) ----
+  docs-serve:
+    desc: "Serve the documentation locally with live reload."
+    cmds:
+      - uv run --group docs mkdocs serve
+
+  docs-build:
+    desc: "Build the documentation site into site/ (strict: warnings fail)."
+    cmds:
+      - uv run --group docs mkdocs build --strict
 
   # ---- profiling: diagnostic, never a gate; outputs are LLM-readable ----
   profile-quick:
-    desc: "30s CPU profile. Usage: task profile-quick -- python script.py"
+    desc: "30s CPU profile. Usage: task profile-quick -- uv run python script.py"
     cmds:
       - mkdir -p .profiles
-      - py-spy record -o .profiles/latest.svg --format flamegraph -d 30 -- {{.CLI_ARGS}}
-      - py-spy record -o .profiles/latest.json --format speedscope -d 30 -- {{.CLI_ARGS}}
-      - uv run python scripts/profile_summary.py .profiles/latest.json > .profiles/latest.md
+      - uvx py-spy record -o .profiles/latest.svg --format flamegraph -d 30 -- {{.CLI_ARGS}}
+      - uvx py-spy record -o .profiles/latest.json --format speedscope -d 30 -- {{.CLI_ARGS}}
+      - uv run python ci_pipeline/profile_summary.py .profiles/latest.json > .profiles/latest.md
       - echo "Wrote .profiles/latest.md (read this) and .profiles/latest.svg (visual)."
 
   profile-mem:
     desc: "Memory profile via scalene. Usage: task profile-mem -- script.py"
     cmds:
       - mkdir -p .profiles
-      - uv run scalene --json --outfile .profiles/mem.json --cli {{.CLI_ARGS}}
-      - uv run python scripts/profile_summary.py --mem .profiles/mem.json > .profiles/mem.md
+      - uv run --with scalene scalene --json --outfile .profiles/mem.json --cli {{.CLI_ARGS}}
+      - uv run python ci_pipeline/profile_summary.py --mem .profiles/mem.json > .profiles/mem.md
       - echo "Wrote .profiles/mem.md"

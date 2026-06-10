@@ -13,12 +13,12 @@
 # rule set below; the custom name checks in scripts/ handle vague/banned words.
 # ─────────────────────────────────────────────────────────────────────────────
 
-target-version = "py312"          # (conv: project.python_version) keep in sync with the project's Python
+target-version = "py313"          # (conv: project.python_version) keep in sync with the project's Python
 line-length = 100                 # (qg-default)
 src = ["src", "tests"]            # (qg-default)
-# notebooks/ is a relaxed experimentation sandbox: excluded from ruff entirely
-# (lint + format). Secret scanning still covers notebooks via gitleaks.
-extend-exclude = ["notebooks"]    # (qg-default)
+# notebooks/ and scripts/ are relaxed experimentation sandboxes: excluded from
+# ruff entirely (lint + format). Secret scanning still covers both via gitleaks.
+extend-exclude = ["notebooks", "scripts"]    # (qg-default)
 
 [lint]
 # (qg-default) the selected rule sets. Each line says what it buys you.
@@ -50,12 +50,12 @@ ignore = [
 
 [lint.per-file-ignores]
 # (qg-default) relaxed sandboxes — see .project-conventions.yaml layout.relaxed_dirs
-"tests/**"     = ["S101", "ANN", "PLR2004"]   # asserts + untyped tests are fine
-"notebooks/**" = ["ALL"]                       # notebooks are a relaxed sandbox
-# scripts/ holds CLI tooling (the quality-gates checks live here). CLI utilities
-# legitimately print to stdout/stderr, shell out to git, and lazy-import optional
-# deps, so those rules don't apply here -- but typing and pathlib still do.
-"scripts/**"   = ["T20", "S603", "S607", "PLC0415", "C901"]
+"tests/**"       = ["S101", "ANN", "PLR2004"]   # asserts + untyped tests are fine
+"notebooks/**"   = ["ALL"]                       # notebooks are a relaxed sandbox
+# ci_pipeline/ holds the gate's own CLI check scripts. CLI utilities legitimately
+# print to stdout/stderr, shell out to git, and lazy-import optional deps, so
+# those rules don't apply here -- but typing and pathlib still do.
+"ci_pipeline/**" = ["T20", "S603", "S607", "PLC0415", "C901"]
 
 [lint.mccabe]
 max-complexity = 10               # (conv: quality.complexity.max_mccabe)

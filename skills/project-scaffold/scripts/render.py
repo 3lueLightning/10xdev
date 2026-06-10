@@ -1,4 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pyyaml>=6", "tomlkit>=0.13"]
+# ///
 """Materialise a GenAI project from the template in ONE pass.
 
 This exists so scaffolding is a single approved action instead of dozens of
@@ -8,10 +12,12 @@ drops (no API -> no api/; external prompt manager -> no prompts/), wires
 dependencies into pyproject.toml, writes .project-conventions.yaml, and prints a
 clear completion banner.
 
-Usage:
-    render.py --answers answers.yaml --dest /path/to/parent [--templates DIR]
-              [--conventions-default FILE]
-    render.py --print-python-default      # echo the dynamic "latest stable - 1"
+Run it with `uv run` -- the PEP 723 header above makes uv supply pyyaml and
+tomlkit, so nothing needs to be pip-installed first:
+
+    uv run render.py --answers answers.yaml --dest /path/to/parent
+              [--templates DIR] [--conventions-default FILE]
+    uv run render.py --print-python-default   # echo the dynamic "latest stable - 1"
 
 Boilerplate (.gitignore, .env.example, __init__.py, settings, etc.) is always
 written without asking -- it is not optional and there is nothing to decide.
@@ -29,8 +35,13 @@ import tomlkit
 import yaml
 
 # --- provider -> distribution name -------------------------------------------
-LLM_SDK = {"openai": "openai", "anthropic": "anthropic", "google": "google-genai",
-           "gemini": "google-genai", "google-genai": "google-genai"}
+LLM_SDK = {
+    "openai": "openai",
+    "anthropic": "anthropic",
+    "google": "google-genai",
+    "gemini": "google-genai",
+    "google-genai": "google-genai",
+}
 PROMPT_SDK = {"langfuse": "langfuse", "langsmith": "langsmith"}
 EXTERNAL_PROMPT = set(PROMPT_SDK)
 
@@ -78,8 +89,9 @@ def substitute(text: str, repl: dict[str, str]) -> str:
 
 
 # --- core --------------------------------------------------------------------
-def render_tree(templates: Path, dest: Path, pkg: str, repl: dict[str, str],
-                *, drop: set[str]) -> None:
+def render_tree(
+    templates: Path, dest: Path, pkg: str, repl: dict[str, str], *, drop: set[str]
+) -> None:
     """Copy templates -> dest, substituting placeholders in paths and contents.
 
     `drop` holds package-relative directory names to skip (e.g. 'api', 'prompts').
@@ -97,14 +109,12 @@ def render_tree(templates: Path, dest: Path, pkg: str, repl: dict[str, str],
             continue
         target.parent.mkdir(parents=True, exist_ok=True)
         try:
-            target.write_text(substitute(src.read_text(encoding="utf-8"), repl),
-                              encoding="utf-8")
+            target.write_text(substitute(src.read_text(encoding="utf-8"), repl), encoding="utf-8")
         except UnicodeDecodeError:
             shutil.copy2(src, target)  # binary (e.g. images): copy as-is
 
 
-def wire_pyproject(path: Path, *, api: str, providers: list[str],
-                   prompt_mgr: str) -> None:
+def wire_pyproject(path: Path, *, api: str, providers: list[str], prompt_mgr: str) -> None:
     doc = tomlkit.parse(path.read_text(encoding="utf-8"))
     deps = doc["project"]["dependencies"]
     declared = {re.split(r"[><=!~ \[]", str(d), maxsplit=1)[0].lower() for d in deps}
@@ -118,12 +128,12 @@ def wire_pyproject(path: Path, *, api: str, providers: list[str],
     if api in {"rest", "rest+ws"}:
         add("fastapi>=0.110")
         add("uvicorn[standard]>=0.29")
-        deptry_ignore.append("uvicorn")          # run via CLI, never imported
+        deptry_ignore.append("uvicorn")  # run via CLI, never imported
     for prov in providers:
         sdk = LLM_SDK.get(prov)
         if sdk:
             add(f"{sdk}>=0.1")
-            deptry_ignore.append(sdk)            # llm/ wrappers don't import it yet
+            deptry_ignore.append(sdk)  # llm/ wrappers don't import it yet
     if prompt_mgr in EXTERNAL_PROMPT:
         sdk = PROMPT_SDK[prompt_mgr]
         add(f"{sdk}>=2")
@@ -138,11 +148,13 @@ def wire_pyproject(path: Path, *, api: str, providers: list[str],
     path.write_text(tomlkit.dumps(doc), encoding="utf-8")
 
 
-def write_conventions(default_file: Path, answers: dict, dest: Path, pkg: str,
-                      providers: list[str]) -> list[str]:
+def write_conventions(
+    default_file: Path, answers: dict, dest: Path, pkg: str, providers: list[str]
+) -> list[str]:
     conv = yaml.safe_load(default_file.read_text(encoding="utf-8"))
     conv["project"].update(
-        name=answers.get("project_name"), package=pkg,
+        name=answers.get("project_name"),
+        package=pkg,
         python_version=answers.get("python_version", "3.13"),
         api=answers.get("api", "rest"),
     )
@@ -160,13 +172,17 @@ def write_conventions(default_file: Path, answers: dict, dest: Path, pkg: str,
     if guidance:
         conv["guidance"] = guidance
     # deferred = Phase-2 ids left at default
-    deferred = [k for k in ("llm_providers", "prompt_management", "deployment_target",
-                            "coverage_target") if not answers.get(k) or
-                str(answers.get(k)).strip().lower() in {"decide later", "not yet",
-                                                        "measure only", "yaml only"}]
+    deferred = [
+        k
+        for k in ("llm_providers", "prompt_management", "deployment_target", "coverage_target")
+        if not answers.get(k)
+        or str(answers.get(k)).strip().lower()
+        in {"decide later", "not yet", "measure only", "yaml only"}
+    ]
     conv["deferred"] = deferred
     (dest / ".project-conventions.yaml").write_text(
-        yaml.safe_dump(conv, sort_keys=False, default_flow_style=False), encoding="utf-8")
+        yaml.safe_dump(conv, sort_keys=False, default_flow_style=False), encoding="utf-8"
+    )
     return deferred
 
 
@@ -198,8 +214,9 @@ def main() -> int:
 
     here = Path(__file__).resolve().parent.parent
     templates = Path(args.templates) if args.templates else here / "templates" / "genai"
-    conv_default = (Path(args.conv_default) if args.conv_default
-                    else here / ".project-conventions.default.yaml")
+    conv_default = (
+        Path(args.conv_default) if args.conv_default else here / ".project-conventions.default.yaml"
+    )
 
     answers = yaml.safe_load(Path(args.answers).read_text(encoding="utf-8")) or {}
     name = answers["project_name"]
@@ -220,8 +237,9 @@ def main() -> int:
     repl = {"{{pkg}}": pkg, "{{project_name}}": name, "{{python_version}}": py}
     render_tree(templates, project_dir, pkg, repl, drop=drop)
     (project_dir / ".python-version").write_text(f"{py}\n", encoding="utf-8")
-    wire_pyproject(project_dir / "pyproject.toml", api=api, providers=providers,
-                   prompt_mgr=prompt_mgr)
+    wire_pyproject(
+        project_dir / "pyproject.toml", api=api, providers=providers, prompt_mgr=prompt_mgr
+    )
     deferred = write_conventions(conv_default, answers, project_dir, pkg, providers)
 
     print(BANNER)

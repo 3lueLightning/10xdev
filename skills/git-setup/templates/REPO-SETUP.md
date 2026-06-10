@@ -9,10 +9,15 @@ If the `gh` / `glab` / `tea` CLI commands below were applied automatically, this
 file is just a record. If not (e.g. no admin at setup time), hand this to whoever
 owns the repo — it's a 5-minute job.
 
+This file lives in `.repo-config/` (repository configuration, alongside the
+`branch_protection/` payloads) rather than `docs/`, which is reserved for the
+MkDocs documentation site.
+
 ## Branch model
 
 - `main` — production / releases. Protected. Merge only via PR from `dev`.
 - `dev` — integration. Protected. Merge only via PR from feature branches.
+  **Day-to-day work is pushed here (or to feature branches) — never to `main`.**
 - `feature/*` — where work happens.
 
 ## Required settings (both `main` and `dev`)
@@ -27,9 +32,9 @@ owns the repo — it's a 5-minute job.
 ### GitHub (`gh`)
 ```bash
 gh api -X PUT repos/{owner}/{repo}/branches/dev/protection \
-  --input branch_protection/github.json
+  --input .repo-config/branch_protection/github.json
 gh api -X PUT repos/{owner}/{repo}/branches/main/protection \
-  --input branch_protection/github.json
+  --input .repo-config/branch_protection/github.json
 ```
 
 ### GitLab (`glab` / API)
@@ -42,10 +47,10 @@ glab api -X POST "projects/:id/protected_branches?name=main&push_access_level=0&
 ### Bitbucket
 Repository settings → Branch restrictions → add rules for `main` and `dev`:
 prevent deletion, prevent force-push, require 1 approval, require successful
-builds. (See `branch_protection/bitbucket.json` for the field values.)
+builds. (See `.repo-config/branch_protection/bitbucket.json` for the field values.)
 
 ### Gitea (`tea` / API — GitHub-compatible)
 ```bash
 tea api -X POST repos/{owner}/{repo}/branch_protections \
-  --input branch_protection/gitea.json   # repeat for main
+  --input .repo-config/branch_protection/gitea.json   # repeat for main
 ```

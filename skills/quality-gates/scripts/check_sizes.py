@@ -17,7 +17,7 @@ import ast
 import sys
 from pathlib import Path
 
-from _common import (
+from common import (
     changed_python_files,
     fail,
     is_relaxed,
@@ -26,7 +26,7 @@ from _common import (
 )
 
 
-def _all_python_files() -> list:
+def all_python_files() -> list:
     root = repo_root()
     return (
         [p for p in (root / "src").rglob("*.py") if not is_relaxed(p)]
@@ -35,7 +35,7 @@ def _all_python_files() -> list:
     )
 
 
-def _func_length(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+def function_line_count(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
     linenos = [getattr(n, "end_lineno", None) or getattr(n, "lineno", None) for n in ast.walk(node)]
     linenos = [n for n in linenos if n is not None]
     last = max(linenos) if linenos else node.lineno
@@ -57,7 +57,7 @@ def check_file(path: Path, fl: dict, func_l: dict) -> tuple[list[str], list[str]
         return warns, fails
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            length = _func_length(node)
+            length = function_line_count(node)
             if length >= func_l["fail"]:
                 fails.append(
                     f"{path}:{node.lineno} {node.name}(): {length} lines "
@@ -75,7 +75,7 @@ def main() -> int:
     fl = conv["file_length"]
     func_l = conv["function_length"]
     changed_only = "--changed-only" in sys.argv
-    files = changed_python_files() if changed_only else _all_python_files()
+    files = changed_python_files() if changed_only else all_python_files()
 
     all_warns: list[str] = []
     all_fails: list[str] = []

@@ -6,7 +6,7 @@
 # that survives this merge. Ruff config lives in ruff.toml, not here.
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 files = ["src"]
 # Advisory by default: signatures are enforced on changed lines by a hook.
 # Flip these to true (and remove `|| true` in the Taskfile) to harden later.
@@ -38,7 +38,13 @@ skip_empty = true
 # fail_under = 60
 
 [tool.bandit]
-exclude_dirs = ["tests", "notebooks", ".venv"]
+exclude_dirs = ["tests", "notebooks", "scripts", ".venv"]
+
+[tool.codespell]
+# Spell checking for code, docs and comments. Add legitimate project terms to
+# .codespell-ignore.txt (one lowercase word per line) -- that file is yours.
+ignore-words = ".codespell-ignore.txt"
+skip = "uv.lock,.venv,site,.profiles,*.svg,*.json"
 
 [tool.deptry]
 # Notebooks are a relaxed experimentation sandbox; do not enforce dep hygiene there.

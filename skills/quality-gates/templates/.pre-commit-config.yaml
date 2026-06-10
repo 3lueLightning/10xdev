@@ -7,19 +7,33 @@
 default_install_hook_types: [pre-commit, pre-push]
 
 repos:
-  # Standard hygiene fixers (fast). check-added-large-files auto-skips LFS files.
+  # Standard hygiene (fast). The three FIXERS are pinned to the commit stage:
+  # a hook that modifies files mid-push would abort the push with nothing left
+  # to re-stage. Fix at commit time; pre-push only verifies.
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        stages: [pre-commit]
       - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+        stages: [pre-commit]
       - id: check-merge-conflict
       - id: check-yaml
       - id: check-toml
-      - id: mixed-line-ending
-        args: ['--fix=lf']
       - id: check-added-large-files
         args: ['--maxkb=1000']
+
+  # Spelling on changed files. Legitimate project terms (jargon, names) go in
+  # .codespell-ignore.txt -- one word per line.
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args: ['--ignore-words=.codespell-ignore.txt']
+        stages: [pre-commit]
 
   # Secret scanning runs at commit time on ALL files, notebooks included
   # (output cells can leak keys). gitleaks manages its own binary -> no manual

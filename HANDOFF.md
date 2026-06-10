@@ -15,22 +15,32 @@ order: **quality-gates → ai-project-guidance → project-scaffold → git-setu
 ## The skills
 
 1. **quality-gates** — installs uv, ruff (lint + format; replaces black), mypy
-   (advisory) + pyright, bandit, pip-audit, guarddog (new deps only), deptry,
-   gitleaks (via pre-commit), pytest + coverage (measured, gated only if a target
-   is set), py-spy/scalene profiling. Two-stage hooks: pre-commit fast/forgiving,
-   pre-push = `task ci-check` (strict). Multi-forge CI (github/gitlab/bitbucket/
-   gitea) all calling `task ci-check`. Custom AST checks live in `scripts/`:
-   `check_changed_signatures`, `check_banned_names`, `check_module_state`,
-   `check_load_dotenv`, `check_sizes`, `check_new_deps`, plus `_common.py`,
-   `merge_pyproject.py`, `profile_summary.py`, and **`apply.py`** (one-shot
-   installer, see "Permissions").
+   (advisory) + pyright, bandit, pip-audit, deptry, codespell (with a user-owned
+   `.codespell-ignore.txt` dictionary), gitleaks (via pre-commit), pytest +
+   coverage (measured, gated only if a target is set). guarddog / py-spy /
+   scalene are deliberately NOT dev deps — the Taskfile runs them via `uvx` /
+   `uv run --with` so they never pollute the lockfile (guarddog's semgrep chain
+   caused unfixable pip-audit CVEs). Two-stage hooks: pre-commit fast/forgiving
+   (file-modifying fixers are pinned to the commit stage so a push is never
+   aborted mid-flight), pre-push = `task ci-check` (strict). Multi-forge CI
+   (github/gitlab/bitbucket/gitea) all calling `task ci-check`. Custom AST
+   checks are copied into the project's **`ci_pipeline/`** (`scripts/` is the
+   user's relaxed sandbox): `check_changed_signatures`, `check_banned_names`,
+   `check_module_state`, `check_load_dotenv`, `check_sizes`, `check_new_deps`,
+   `check_root_scripts`, plus `common.py`, `merge_pyproject.py`,
+   `profile_summary.py`, and **`apply.py`** (one-shot installer, see
+   "Permissions").
 2. **ai-project-guidance** — generates a canonical `AGENTS.md` + thin `CLAUDE.md`.
-   Includes a Clean Code philosophy section and a "coach the developer" section.
-3. **project-scaffold** — orchestrator. Interviews the user (`interview.yaml`),
-   then runs **`scripts/render.py`** once to materialise the whole tree, writes
+   Includes a Clean Code philosophy section, a "never circumvent a failing gate"
+   section, and a "coach the developer" section.
+3. **project-scaffold** — orchestrator. Interviews the user (`interview.yaml`;
+   question first, options with an Enter-able default, "why it matters" last),
+   then runs **`scripts/render.py`** once to materialise the whole tree
+   (including `docs/` + `mkdocs.yml` and the `scripts/` sandbox), writes
    `.project-conventions.yaml`, and calls the other three skills.
-4. **git-setup** — main+dev branches + branch protection via gh/glab/tea, only
-   when the user has admin; always writes `docs/REPO-SETUP.md` as fallback.
+4. **git-setup** — creates the remote repo via gh/glab/tea when the user has
+   admin and none exists, main+dev branches + branch protection, leaves the
+   working copy on `dev`; always writes `.repo-config/REPO-SETUP.md` as fallback.
 
 ## Decisions already locked (do not silently relitigate)
 
@@ -42,8 +52,9 @@ order: **quality-gates → ai-project-guidance → project-scaffold → git-setu
   true constants → `constants/`. No `os.getenv`/`load_dotenv` elsewhere
   (`check_load_dotenv.py`). No `global`, no mutable module-level state
   (`check_module_state.py` + ruff PLW0603).
-- **Naming, two distinct rules** (`check_banned_names.py`, applied to identifiers
-  only — never string literals, so dict keys / dataframe columns are exempt):
+- **Naming, three distinct rules** (`check_banned_names.py`, applied to
+  identifiers only — never string literals, so dict keys / dataframe columns are
+  exempt):
   1. *vague-when-alone* (`data`, `helper`, `process`, … by themselves; compounds
      like `data_loader` are fine) — `naming.banned_when_alone`.
   2. *banned token anywhere* (`new`/`old`/`tmp`/`temp` as a word token in an
@@ -51,7 +62,17 @@ order: **quality-gates → ai-project-guidance → project-scaffold → git-setu
      rejected; `renew`/`news`/`template` are fine because matching is token-wise)
      — `naming.banned_tokens`. **This is the corrected rule** — an earlier
      version banned only suffixes; that was wrong.
+  3. *no single-underscore prefix at module level* (names AND module filenames —
+     `_common.py` is rejected). Rationale: in a service nothing imports modules
+     from outside, so `_internal` marks nothing. Per dbader's underscore
+     semantics, `self._attr` in classes, `__dunder__`, trailing `class_`, and
+     the bare `_` throwaway stay allowed.
   Casing (snake_case / PascalCase / UPPER_CASE) is enforced by ruff `N`.
+- **Project layout names**: gate tooling lives in `ci_pipeline/`; `scripts/` is
+  the user's relaxed sandbox (in `layout.relaxed_dirs` with tests/notebooks);
+  no script files at the repo root (`check_root_scripts.py`); docs are MkDocs
+  (material + mkdocstrings, `task docs-serve`); repo configuration (REPO-SETUP,
+  branch-protection payloads) lives in `.repo-config/`, not `docs/`.
 - **Prompts** live as versioned YAML **inside the package** at
   `src/<pkg>/prompts/`, loaded via `importlib.resources` (wheel/container-safe).
   Exactly one location — never a root-level `prompts/`. If a prompt manager
@@ -79,17 +100,24 @@ order: **quality-gates → ai-project-guidance → project-scaffold → git-setu
 ## The one-pass pattern (and why)
 
 Both scaffolding and gate-application run as a **single script** rather than many
-individual file writes, so the host agent approves once instead of per file:
+individual file writes, so the host agent approves once instead of per file.
+Both carry **PEP 723 inline metadata** and are invoked with `uv run` (never bare
+`python`, never a `pip install` first — that's what broke on machines with no
+`python` shim and externally-managed Homebrew Pythons):
 
-- `skills/project-scaffold/scripts/render.py --answers a.yaml --dest <parent>`
+- `uv run skills/project-scaffold/scripts/render.py --answers a.yaml --dest <parent>`
   → renders tree, substitutes placeholders, applies conditional drops (api:none →
   no `api/`; langfuse/langsmith → no `prompts/`), wires deps + seeds deptry
   DEP002, writes `.python-version` + `.project-conventions.yaml`, prints a banner.
-- `skills/quality-gates/scripts/apply.py --dest <project> [--forge ...]`
-  → copies config + check scripts, aligns `(conv:)` values in `ruff.toml`, merges
-  `[tool.*]` into pyproject (non-destructive; preserves render's DEP002 seed),
+- `uv run skills/quality-gates/scripts/apply.py --dest <project> [--forge ...]`
+  → copies config + check scripts (into `ci_pipeline/`), aligns `(conv:)` values
+  in `ruff.toml`, merges `[tool.*]` into pyproject (non-destructive; preserves
+  render's DEP002 seed), seeds `.codespell-ignore.txt` (never overwrites it),
   drops the CI file. Locates its own templates via `__file__`, so it works
   wherever installed. Does NOT install deps (that's `task setup`/`uv sync`).
+
+The SKILL.md files explicitly forbid reading/`ls`/`grep`-ing the skills' own
+`templates/` per file — that's what produced permission-prompt walls.
 
 When extending: keep new file-producing work inside these scripts, not as
 per-file agent writes.
@@ -138,8 +166,10 @@ shows active rules.
 ## File map
 
 - `skills/quality-gates/{SKILL.md, .project-conventions.default.yaml,
-  scripts/*.py, templates/*}` — `.project-conventions.default.yaml` is the
-  CANONICAL schema; `templates/ci/{github,gitlab,bitbucket,gitea}.yml`.
+  scripts/*.py, templates/*}` — the skill's own `scripts/` dir is the skill
+  packaging convention; `apply.py` copies the checks into the *project's*
+  `ci_pipeline/`. `templates/ci/{github,gitlab,bitbucket,gitea}.yml` (copied to
+  `ci-check.yml` on github/gitea, matching the required status check name).
 - `skills/project-scaffold/{SKILL.md, interview.yaml,
   .project-conventions.default.yaml, scripts/render.py, templates/genai/...}` —
   template package dir is `templates/genai/src/__pkg__/`.

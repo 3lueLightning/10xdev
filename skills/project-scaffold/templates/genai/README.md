@@ -35,6 +35,11 @@ Every folder has its own `README.md` with the details; the one-liners:
   - `api/` — FastAPI app (only if you enabled an API).
 - `tests/` — pytest suite (relaxed rules).
 - `notebooks/` — experimentation sandbox (relaxed rules; see `00_getting_started`).
+- `scripts/` — your own throwaway scripts (relaxed rules; never put scripts at
+  the repo root — the gate rejects them).
+- `ci_pipeline/` — the quality gate's own check scripts (owned by tooling,
+  don't edit by hand).
+- `docs/` — MkDocs documentation source (`task docs-serve` to preview).
 
 ## Conventions in brief
 
@@ -84,7 +89,9 @@ underlying commands).
 
 | command | what |
 |---|---|
-| `task format` | auto-format + auto-fix |
-| `task ci-check` | full gate (lint, types, security, audit, deps, tests) |
-| `task profile-quick -- python script.py` | CPU flamegraph + LLM-readable summary |
+| `task format` | auto-format + auto-fix (includes import ordering) |
+| `task ci-check` | full gate (lint, spelling, types, security, audit, deps, tests) |
+| `task spell` | spell-check; allow terms via `.codespell-ignore.txt` |
+| `task docs-serve` | preview the MkDocs documentation locally |
+| `task profile-quick -- uv run python script.py` | CPU flamegraph + LLM-readable summary |
 | `task audit-package -- <pkg>` | supply-chain scan before adding a dependency |

@@ -5,6 +5,7 @@
   "permissions": {
     "allow": [
       "Read(//Users/**/.claude/plugins/**)",
+      "Read(//Users/**/.claude/skills/**)",
       "Bash(python:*)",
       "Bash(python3:*)",
       "Bash(uv:*)",
@@ -13,6 +14,7 @@
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git add:*)",
+      "Bash(gh auth status:*)",
       "Bash(mkdir:*)",
       "Bash(cp:*)"
     ],

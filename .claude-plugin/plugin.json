@@ -1,6 +1,6 @@
 {
   "name": "10xdev",
-  "description": "Interview-driven scaffolding and a strict-but-friendly quality apparatus for Python GenAI projects. Bundles four composable skills: project-scaffold (one-pass src-layout generator), quality-gates (ruff/type/security/size/naming gates + hooks + CI behind one `task ci-check`), ai-project-guidance (AGENTS.md/CLAUDE.md following Clean Code), and git-setup (branch model + protection). Designed so junior engineers get production-grade structure and the conventions explain themselves.",
+  "description": "Interview-driven scaffolding and a strict-but-friendly quality apparatus for Python GenAI projects. Bundles four composable skills: project-scaffold (one-pass src-layout generator), quality-gates (ruff/type/security/size/naming gates + hooks + CI behind one `task ci-check`), ai-project-guidance (AGENTS.md/CLAUDE.md following Clean Code), and git-setup (repo creation, branch model + protection). Designed so junior engineers get production-grade structure and the conventions explain themselves.",
   "version": "0.1.0",
   "author": { "name": "Diogo Norinho" },
   "keywords": ["python", "genai", "scaffolding", "linting", "quality", "uv", "ruff", "clean-code"]

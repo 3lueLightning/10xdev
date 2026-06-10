@@ -16,12 +16,12 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from _common import changed_line_numbers, changed_python_files, fail
+from common import changed_line_numbers, changed_python_files, fail
 
 MUTABLE_NODES = (ast.List, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp)
 
 
-def _is_constish(name: str) -> bool:
+def is_constish(name: str) -> bool:
     return name.isupper() or name.startswith("__")
 
 
@@ -47,7 +47,7 @@ def check_file(path: Path) -> list[str]:
         if is_final:
             continue
         for tgt in targets:
-            if not isinstance(tgt, ast.Name) or _is_constish(tgt.id):
+            if not isinstance(tgt, ast.Name) or is_constish(tgt.id):
                 continue
             if isinstance(value, MUTABLE_NODES) and (treat_whole_file or tgt.lineno in changed):
                 out.append(
