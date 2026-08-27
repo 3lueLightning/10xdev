@@ -29,8 +29,9 @@ select = [
 ignore = ["ANN401"]
 
 [lint.per-file-ignores]
-"tests/**"              = ["S101", "S603", "ANN", "PLR2004"]
-"skills/*/scripts/**"   = ["T20", "S603", "S607", "PLC0415", "ANN"]
+"tests/**"                     = ["S101", "S603", "ANN", "PLR2004"]
+"skills/*/scripts/**"          = ["T20", "S603", "S607", "PLC0415", "ANN"]
+"tests/manual/run_scenarios.py" = ["T20", "S603", "S607"]
 
 [lint.mccabe]
 max-complexity = 10

@@ -29,3 +29,12 @@ warn_return_any = true
 warn_unused_ignores = true
 ignore_missing_imports = true
 pretty = true
+
+[tool.pyright]
+# The check/render scripts aren't an installed package; they're loose modules
+# put on sys.path at runtime by tests/conftest.py. Pyright/Pylance never runs
+# conftest, so tell it where they live statically (mirrors the sys.path.insert).
+extraPaths = [
+    "skills/quality-gates/scripts",
+    "skills/project-scaffold/scripts",
+]

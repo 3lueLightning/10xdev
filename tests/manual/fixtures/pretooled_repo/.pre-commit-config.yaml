@@ -1,0 +1,11 @@
+# Hand-written by the team before quality-gates existed -- includes a local
+# hook the skill doesn't know about. A scenario run shows whether `apply.py`
+# preserves or clobbers it.
+repos:
+  - repo: local
+    hooks:
+      - id: team-custom-check
+        name: team custom check (pre-existing, not part of quality-gates)
+        entry: echo "pretend this is a real hook"
+        language: system
+        pass_filenames: false

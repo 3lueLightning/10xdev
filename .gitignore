@@ -5,3 +5,7 @@ __pycache__/
 .venv/
 .project-conventions.local.yaml
 .claude/settings.local.json
+
+# scratch output from tests/manual/run_scenarios.py -- force-add a specific
+# dated report (tests/manual/runs/<timestamp>/) if you want to share it
+tests/manual/runs/

@@ -1,0 +1,36 @@
+[project]
+name = "pretooled"
+version = "0.1.0"
+description = "Merge fixture: a repo that already hardened some [tool.*] sections by hand before quality-gates was ever applied."
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pretooled"]
+
+[tool.uv]
+package = true
+
+# --- hand-hardened before quality-gates existed; the merge must NOT touch these ---
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -ra --strict-markers"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
+# present but only partially filled -- merge should add the missing sibling
+# keys (show_missing, skip_empty) without touching fail_under
+[tool.coverage.report]
+fail_under = 80

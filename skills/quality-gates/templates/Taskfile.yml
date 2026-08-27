@@ -132,6 +132,6 @@ tasks:
     desc: "Memory profile via scalene. Usage: task profile-mem -- script.py"
     cmds:
       - mkdir -p .profiles
-      - uv run --with scalene scalene --json --outfile .profiles/mem.json --cli {{.CLI_ARGS}}
+      - uv run --with scalene scalene run --json --outfile .profiles/mem.json --cli {{.CLI_ARGS}}
       - uv run python ci_pipeline/profile_summary.py --mem .profiles/mem.json > .profiles/mem.md
       - echo "Wrote .profiles/mem.md"
